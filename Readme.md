@@ -13,7 +13,12 @@ In this project a batch processing pipeline for the 1-minute Bitcoin price data 
 Currently working on first Microservice
 
 ## Data
-The dataset from Kaggle is stored locally 
+The dataset from Kaggle is stored locally because of size restrictions. The dataset can be found here: https://www.kaggle.com/datasets/mczielinski/bitcoin-historical-data 
+
+- to run the pipeline please download the dataset from the link above
+- create the following folders in your project:
+    - data/raw_data/ -> place here the downloaded csv file
+    - data/monthly_raw_data/ -> the monthly split data will be saved here by the script split_data_to_monthly.py
 
 ## Author
 ChrisSeHe

@@ -14,6 +14,20 @@ services:
       DB_PASSWORD: password
       DB_NAME: btc_data
 
+  storage:
+    build: ./MS2_storage
+    container_name: storage_microservice
+    depends_on:
+      - minio
+    environment:
+      AWS_ACCESS_KEY_ID: minioadmin
+      AWS_SECRET_ACCESS_KEY: minioadmin
+      MINIO_ENDPOINT: http://minio:9000
+      BUCKET_NAME: btc-raw-data
+    volumes:
+      - ./data:/app/data
+    command: python upload_to_minio.py
+
   postgres:
     image: postgres:15
     container_name: btc_postgres

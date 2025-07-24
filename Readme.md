@@ -10,7 +10,7 @@ In this project a batch processing pipeline for the 1-minute Bitcoin price data 
 5. Delivery via Flask API for ML access
 
 ## Status Update
-Currently working on first Microservice
+Currently working on third microservice
 
 ## Data
 The dataset from Kaggle is stored locally because of size restrictions. The dataset can be found here: https://www.kaggle.com/datasets/mczielinski/bitcoin-historical-data 

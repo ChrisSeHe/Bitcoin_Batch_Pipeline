@@ -20,5 +20,8 @@ The dataset from Kaggle is stored locally because of size restrictions. The data
     - data/raw_data/ -> place here the downloaded csv file
     - data/monthly_raw_data/ -> the monthly split data will be saved here by the script split_data_to_monthly.py
 
+## Note
+Some monthly files may lack columns like 'volume_btc' when no transaction took place. These are skipped during ingestion.
+
 ## Author
 ChrisSeHe

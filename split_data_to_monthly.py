@@ -20,5 +20,5 @@ os.makedirs(output_dir, exist_ok=True)
 # Split and save file per month
 for period, group in df.groupby('Month'):
     filename = f"{output_dir}/BTC_{period}.csv"
-    group.to_csv(filename, index=False)
+    group.drop(columns='Month').to_csv(filename, index=False)
     print(f"Saved: {filename}")

@@ -34,7 +34,6 @@ def copy_from_stringio(conn, df):
     buffer = StringIO()
     df.to_csv(buffer, index=False, header=False)
     buffer.seek(0)
-
     with conn.cursor() as cur:
         cur.copy_expert("""
             COPY btc_prices (timestamp, open, high, low, close, volume)
@@ -45,7 +44,6 @@ def copy_from_stringio(conn, df):
 def ingest_files(conn):
     print(f"Checking files inside {DATA_DIR}")
     print(os.listdir(DATA_DIR))
-
     for file in sorted(os.listdir(DATA_DIR)):
         if file.endswith(".csv"):
             print(f"Ingesting {file}")
@@ -54,14 +52,11 @@ def ingest_files(conn):
             except Exception as e:
                 print(f"Failed to read {file}: {e}")
                 continue
-
             df.columns = [c.lower() for c in df.columns]
             expected_cols = ['timestamp', 'open', 'high', 'low', 'close', 'volume']
             if not all(col in df.columns for col in expected_cols):
-                missing = [col for col in expected_cols if col not in df.columns]
-                print(f"Missing columns in {file}: {missing}")
+                print(f"Missing columns in {file}: {expected_cols}")
                 continue
-
             df = df[expected_cols].dropna()
             try:
                 copy_from_stringio(conn, df)
@@ -69,9 +64,25 @@ def ingest_files(conn):
                 print(f"COPY failed for {file}: {e}")
                 conn.rollback()
 
+def mark_ingestion_complete():
+    conn = connect_db()
+    with conn.cursor() as cur:
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS ingestion_status (
+                id SERIAL PRIMARY KEY,
+                status TEXT,
+                timestamp TIMESTAMP DEFAULT NOW()
+            );
+        """)
+        cur.execute("INSERT INTO ingestion_status (status) VALUES ('done');")
+        conn.commit()
+    conn.close()
+    print("Ingestion complete flag written to database.")
+
 if __name__ == "__main__":
     print("ingest.py is starting...")
     conn = connect_db()
     create_table(conn)
     ingest_files(conn)
     conn.close()
+    mark_ingestion_complete()

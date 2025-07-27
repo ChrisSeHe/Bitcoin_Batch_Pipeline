@@ -10,4 +10,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 RUN chmod +x wait_for_postgres.sh
 
 ENTRYPOINT ["./wait_for_postgres.sh"]
-CMD ["python", "ingest.py"]
+CMD ["python", "preprocess.py"]

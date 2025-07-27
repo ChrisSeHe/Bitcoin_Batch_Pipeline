@@ -6,7 +6,6 @@ services:
     container_name: ingestion_microservice
     depends_on:
       - postgres
-    entrypoint: ["/wait_for_postgres.sh", "python", "ingest.py"]
     environment:
       DB_HOST: postgres
       DB_PORT: 5432
@@ -18,15 +17,42 @@ services:
     build: ./MS2_storage
     container_name: storage_microservice
     depends_on:
+      - ingestion
+      - postgres
       - minio
     environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: btc_data
       AWS_ACCESS_KEY_ID: minioadmin
       AWS_SECRET_ACCESS_KEY: minioadmin
       MINIO_ENDPOINT: http://minio:9000
       BUCKET_NAME: btc-raw-data
     volumes:
       - ./data:/app/data
-    command: python upload_to_minio.py
+    entrypoint: ["./wait_for_postgres.sh"]
+    command: ["python", "upload_to_minio.py"]
+
+  preprocessing:
+    build: ./MS3_Preprocessing
+    container_name: preprocessing_microservice
+    depends_on:
+      - storage
+      - postgres
+      - minio
+    environment:
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+      MINIO_BUCKET: btc-raw-data
+
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: btc_data
 
   postgres:
     image: postgres:15

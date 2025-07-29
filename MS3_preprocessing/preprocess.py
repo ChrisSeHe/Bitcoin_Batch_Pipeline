@@ -45,24 +45,31 @@ def wait_for_upload_complete(bucket, key="upload_complete.txt", timeout=300, int
 def preprocess(df):
     df['timestamp'] = pd.to_datetime(df['timestamp'], errors='coerce')
     df.dropna(inplace=True)
+    df['range'] = df['high'] - df['low']
+    df = df.astype({
+    "open": "float32",
+    "high": "float32",
+    "low": "float32",
+    "close": "float32",
+    "volume": "float32"
+})
     return df
 
 def main():
-    # Wait for signal from storage microservice
     wait_for_upload_complete(BUCKET_NAME)
 
-    # Fetch file list
     response = s3.list_objects_v2(Bucket=BUCKET_NAME)
     file_keys = [
         f["Key"] for f in response.get("Contents", [])
         if f["Key"] != "upload_complete.txt"
     ]
 
-    # Connect to PostgreSQL
     conn = psycopg2.connect(
         host=PG_HOST, port=PG_PORT, user=PG_USER, password=PG_PASSWORD, dbname=PG_DB
     )
     cursor = conn.cursor()
+
+    # Create table for preprocessed data
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS btc_preprocessed (
             timestamp TIMESTAMP,
@@ -70,21 +77,22 @@ def main():
             high NUMERIC,
             low NUMERIC,
             close NUMERIC,
-            volume NUMERIC
+            volume NUMERIC,
+            range NUMERIC
         )
     """)
     conn.commit()
 
-    # Process and insert data
+    # Process and insert
     for file_key in file_keys:
         obj = s3.get_object(Bucket=BUCKET_NAME, Key=file_key)
         df = pd.read_csv(io.BytesIO(obj['Body'].read()))
         df = preprocess(df)
 
         if not df.empty:
-            rows = df[["timestamp", "open", "high", "low", "close", "volume"]].values.tolist()
+            rows = df[["timestamp", "open", "high", "low", "close", "volume", "range"]].values.tolist()
             execute_values(cursor, """
-                INSERT INTO btc_preprocessed (timestamp, open, high, low, close, volume)
+                INSERT INTO btc_preprocessed (timestamp, open, high, low, close, volume, range)
                 VALUES %s
             """, rows)
             conn.commit()
@@ -92,8 +100,20 @@ def main():
         else:
             print(f"Skipped empty or invalid file: {file_key}")
 
+    # Create and insert preprocessing_status = 'done'
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS preprocessing_status (
+            status TEXT,
+            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    cursor.execute("INSERT INTO preprocessing_status (status) VALUES ('done')")
+    conn.commit()
+
     cursor.close()
     conn.close()
+
+    print("Preprocessing complete and status logged.")
 
 if __name__ == "__main__":
     main()

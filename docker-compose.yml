@@ -53,6 +53,23 @@ services:
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
       POSTGRES_DB: btc_data
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+
+  aggregation:
+    build: ./MS4_aggregation
+    container_name: aggregation_microservice
+    depends_on:
+      - preprocessing
+      - postgres
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: btc_data
 
   postgres:
     image: postgres:15

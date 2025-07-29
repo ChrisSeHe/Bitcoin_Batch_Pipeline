@@ -10,6 +10,7 @@ DB_NAME = os.getenv("POSTGRES_DB", "btc_data")
 DB_USER = os.getenv("POSTGRES_USER", "user")
 DB_PASSWORD = os.getenv("POSTGRES_PASSWORD", "password")
 
+
 def wait_for_table(conn, table_name="btc_preprocessed"):
     print(f"Waiting indefinitely for table `{table_name}` to be ready in database...")
     with conn.cursor() as cur:
@@ -28,6 +29,7 @@ def wait_for_table(conn, table_name="btc_preprocessed"):
                 print(f"DB error while checking for table: {e} (retrying... {i+1})")
             time.sleep(1)
             i += 1
+
 
 def wait_for_preprocessing_done(conn):
     print("Waiting indefinitely for preprocessing_status = 'done' in DB...")
@@ -52,6 +54,7 @@ def wait_for_preprocessing_done(conn):
             print(f"Still waiting... ({i+1})")
             time.sleep(1)
             i += 1
+
 
 def fetch_aggregated_data(conn, freq):
     if freq == "W":
@@ -100,6 +103,7 @@ def fetch_aggregated_data(conn, freq):
     """
     return pd.read_sql(query, conn)
 
+
 def write_to_db(df, table_name):
     conn = psycopg2.connect(
         host=DB_HOST, port=DB_PORT, dbname=DB_NAME, user=DB_USER, password=DB_PASSWORD
@@ -107,7 +111,12 @@ def write_to_db(df, table_name):
     cur = conn.cursor()
 
     cur.execute(f"""
-        CREATE TABLE IF NOT EXISTS {table_name} (
+        DROP TABLE IF EXISTS {table_name};
+    """)
+    conn.commit()
+
+    cur.execute(f"""
+        CREATE TABLE {table_name} (
             timestamp TIMESTAMP PRIMARY KEY,
             open NUMERIC,
             high NUMERIC,
@@ -123,10 +132,29 @@ def write_to_db(df, table_name):
         cur.execute(f"""
             INSERT INTO {table_name} (timestamp, open, high, low, close, volume, range)
             VALUES (%s, %s, %s, %s, %s, %s, %s)
-            ON CONFLICT (timestamp) DO NOTHING
         """, tuple(row))
     conn.commit()
     conn.close()
+
+
+def mark_aggregation_done():
+    conn = psycopg2.connect(
+        host=DB_HOST, port=DB_PORT, dbname=DB_NAME, user=DB_USER, password=DB_PASSWORD
+    )
+    cur = conn.cursor()
+
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS aggregation_status (
+            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            status TEXT
+        )
+    """)
+    conn.commit()
+
+    cur.execute("INSERT INTO aggregation_status (status) VALUES ('done')")
+    conn.commit()
+    conn.close()
+
 
 def main():
     conn = psycopg2.connect(
@@ -136,7 +164,6 @@ def main():
     wait_for_preprocessing_done(conn)
     wait_for_table(conn, "btc_preprocessed")
 
-    # Use the same open connection for querying
     weekly = fetch_aggregated_data(conn, "W")
     quarterly = fetch_aggregated_data(conn, "Q")
     conn.close()
@@ -145,6 +172,8 @@ def main():
     write_to_db(quarterly, "btc_quarterly")
 
     print("Aggregation complete.")
+    mark_aggregation_done()
+
 
 if __name__ == "__main__":
     main()

@@ -6,11 +6,11 @@ In this project a batch processing pipeline for the 1-minute Bitcoin price data 
 1. **Ingestion**: Loads historical 1-minute BTC price data from local CSV files (downloaded from Kaggle, s. below) and inserts it into a PostgreSQL database.
 2. **Storage**: Reads the data from PostgreSQL and stores the monthly CSV files in an object storage (MinIO).
 3. **Preprocessing**: Loads files from MinIO, cleans the data using Pandas, performs basic feature engineering (calculating price *range* = high - low), and writes the results to PostgreSQL.
-4. **Aggregation**: Summarize preprocessed data into weekly and quarterly aggregates.
-5. **Delivery**: [Planned] Expose the final aggregated data via a Flask API for downstream ML consumption.
+4. **Aggregation**: Summarize preprocessed data into weekly and quarterly aggregates, then stores them in PostgreSQL.
+5. **Delivery**: Expose the final aggregated data via a Flask API for downstream ML consumption in API endpoints: /weekly, /quarterly.
 
 ## Status Update
-Currently working on microservice 5 
+All five microservices implemented.
 
 ## Tech
 - Language: Python
